@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+</head>
+<body>
+    <h1>Register</h1>
+    
+    <form id="registerForm">
+        {% csrf_token %}
+        <div>
+            <label for="email">Email:</label><br>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <br>
+        <div>
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <br>
+        <div>
+            <label for="password1">Confirm Password:</label><br>
+            <input type="password" id="password1" name="password1" required>
+        </div>
+        <br>
+        <div id="message"></div>
+        <br>
+        <button type="submit" id="submitBtn">Register</button>
+    </form>
+    <br>
+    <!-- <p>Already have an account? <a href="{% url 'login' %}">Login here</a></p> -->
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const message = document.getElementById('message');
+            message.innerHTML = '';
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const password2 = document.getElementById('password2').value;
+
+            if (password !== password2) {
+                message.innerHTML = '<p style="color: red;">Passwords do not match!</p>';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Registering...';
+
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                const response = await fetch('/api-accounts/register_email/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        password1: password1
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    message.innerHTML = '<p style="color: green;">Registration successful! Please check your email to verify your account.</p>';
+                    document.getElementById('registerForm').reset();
+                } else {
+                    let errorText = 'Registration failed. ';
+                    if (data.email) errorText += data.email[0];
+                    else if (data.password) errorText += data.password[0];
+                    else if (data.detail) errorText += data.detail;
+                    else if (data.error) errorText += data.error;
+                    else errorText += 'Please try again.';
+                    
+                    message.innerHTML = '<p style="color: red;">' + errorText + '</p>';
+                }
+            } catch (error) {
+                message.innerHTML = '<p style="color: red;">Network error. Please try again.</p>';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Register';
+            }
+        });
+    </script>
+</body>
+</html>
+{% endblock %}

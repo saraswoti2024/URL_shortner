@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{% endblock %}</title>
+</head>
+<body>
+    <nav>
+        <a href="/register/">Register</a> |
+        <a href="/login/">Login</a>
+    </nav>
+    <hr>
+
+    {% block content %}{% endblock %}
+</body>
+</html>
