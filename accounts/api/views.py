@@ -12,6 +12,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
  
 def send_email_verification(email,url):
@@ -74,10 +75,46 @@ class ResendEmailVerification(APIView):
 
             EmailVerification.objects.filter(user=user).delete()
             token_obj = EmailVerification.objects.create(user=user)
-            verify_url = f"{"localhost"}/verify-email/?token={token_obj.token}"
+            verify_url = f"{"localhost"}/api-accounts/verify-email/?token={token_obj.token}"
             send_email_verification(user.email,verify_url)
             return Response({'message': "email verification resent!check your mail"},status=status.HTTP_200_OK)
         return Response({'error': "email is required!"},status=status.HTTP_200_OK)
 
 class CustomToken(TokenObtainPairView):
     serializer_class = CustomTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.user
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        response = Response(
+            {
+                "message": "Login successful",
+                "email": user.email,
+                "is_email_verified": user.is_email_verified,
+                "user_id": user.id
+            },
+            status=status.HTTP_200_OK
+        )
+
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            samesite="Lax",
+            max_age=24*60*60,
+            secure=False,
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            samesite="Lax",
+            max_age=7*24*3600,
+            secure=False,
+        )
+
+        return response

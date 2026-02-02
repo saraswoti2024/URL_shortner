@@ -1,22 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
 </head>
 <body>
+    <h1>Login</h1>
+    
+    <form id="loginForm">
+        <div>
+            <label for="email">Email:</label><br>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <br>
+        <div>
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <br>
+        <div id="message"></div>
+        <br>
+        <button type="submit" id="submitBtn">Login</button>
+    </form>
+    <br>
+    <p>Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
 
-<h2>Login</h2>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const message = document.getElementById('message');
+            message.innerHTML = '';
 
-<p id="success" style="color:green;"></p>
-<p id="error" style="color:red;"></p>
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
-<form id="loginForm">
-    {% csrf_token %}
-    <input type="email" id="email" placeholder="Email" required><br><br>
-    <input type="password" id="password" placeholder="Password" required><br><br>
-    <button type="submit">Login</button>
-</form>
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
 
-<script src="/static/js/login.js"></script>
+            try {
+                function getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+                const csrfToken = getCookie('csrftoken');
+
+                const response = await fetch('/api-accounts/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    message.innerHTML = '<p style="color: green;">Login successful! Redirecting...</p>';
+                    
+                    // Store tokens
+                    if (data.access) {
+                        localStorage.setItem('access_token', data.access);
+                    }
+                    if (data.refresh) {
+                        localStorage.setItem('refresh_token', data.refresh);
+                    }
+                    
+                    // Redirect to dashboard or home
+                    setTimeout(() => {
+                        window.location.href = '/url_short/dashboard/'; // Change this to your dashboard URL
+                    }, 1000);
+                } else {
+                    let errorText = 'Login failed. ';
+                    if (data.detail) errorText += data.detail;
+                    else if (data.error) errorText += data.error;
+                    else errorText += 'Invalid credentials.';
+                    
+                    message.innerHTML = '<p style="color: red;">' + errorText + '</p>';
+                }
+            } catch (error) {
+                message.innerHTML = '<p style="color: red;">Network error. Please try again.</p>';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
+            }
+        });
+    </script>
 </body>
 </html>

@@ -14,6 +14,11 @@
     
     <form id="registerForm">
         {% csrf_token %}
+            
+ <div>
+            <label for="full_name">Full_name:</label><br>
+            <input type="text" id="full_name" name="full_name" required>
+        </div>
         <div>
             <label for="email">Email:</label><br>
             <input type="email" id="email" name="email" required>
@@ -43,12 +48,12 @@
             const submitBtn = document.getElementById('submitBtn');
             const message = document.getElementById('message');
             message.innerHTML = '';
-
+            const full_name = document.getElementById('full_name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const password2 = document.getElementById('password2').value;
+            const password1 = document.getElementById('password1').value;
 
-            if (password !== password2) {
+            if (password !== password1) {
                 message.innerHTML = '<p style="color: red;">Passwords do not match!</p>';
                 return;
             }
@@ -66,9 +71,10 @@
                         'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({
+                        full_name:full_name,
                         email: email,
                         password: password,
-                        password1: password1
+                        password1: password1,
                     })
                 });
 

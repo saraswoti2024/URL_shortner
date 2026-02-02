@@ -1,12 +1,166 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Verifying...</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email</title>
 </head>
 <body>
+    <div id="verifying">
+        <h1>Verifying Your Email...</h1>
+        <p>Please wait...</p>
+    </div>
 
-<p>Verifying your email...</p>
+    <div id="success" style="display: none;">
+        <h1>Email Verified!</h1>
+        <p>Your account has been successfully verified.</p>
+        <p>Redirecting to login in <span id="countdown">3</span> seconds...</p>
+        <a href="{% url 'login' %}">Go to Login</a>
+    </div>
 
-<script src="/static/js/verify_email.js"></script>
+    <div id="error" style="display: none;">
+        <h1>Verification Failed</h1>
+        <p id="errorText">The verification link is invalid or has expired.</p>
+        <br>
+        <h3>Resend Verification Email</h3>
+        <form id="resendForm">
+            <div>
+                <label for="email">Email:</label><br>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <br>
+            <button type="submit" id="resendBtn">Resend Verification Email</button>
+        </form>
+        <div id="resendMessage"></div>
+        <br>
+        <p><a href="{% url 'register' %}">Back to Registration</a></p>
+    </div>
+
+    <script>
+        // Get token from URL
+       
+
+        // Verify email on page load
+        document.addEventListener("DOMContentLoaded", async() => {
+  const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        console.log(token)
+         await verifyEmail(token)
+});
+
+        async function verifyEmail(token) {
+            console.log(token)
+            if (!token) {
+                showError('No verification token found.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api-accounts/verify-email/?token=${token}`, {
+                    method: 'POST',
+                     headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                       token : token,
+                    })
+                    
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess();
+                } else {
+                    let errorText = data.detail || data.error || 'The verification link is invalid or has expired.';
+                    showError(errorText);
+                }
+            } catch (error) {
+                showError('Network error. Please try again.');
+            }
+        }
+
+        function showSuccess() {
+            document.getElementById('verifying').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'block';
+
+            // Countdown and redirect
+            let seconds = 3;
+            const countdownEl = document.getElementById('countdown');
+            
+            const interval = setInterval(() => {
+                seconds--;
+                countdownEl.textContent = seconds;
+                
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    window.location.href = '{% url "login" %}';
+                }
+            }, 1000);
+        }
+
+        function showError(message) {
+            document.getElementById('verifying').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('errorText').textContent = message;
+        }
+
+        // Handle resend verification
+        document.getElementById('resendForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const resendBtn = document.getElementById('resendBtn');
+            const resendMessage = document.getElementById('resendMessage');
+            const email = document.getElementById('email').value;
+
+            resendMessage.innerHTML = '';
+            resendBtn.disabled = true;
+            resendBtn.textContent = 'Sending...';
+
+            try {
+                function getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+                const csrfToken = getCookie('csrftoken');
+
+                const response = await fetch('/api-accounts/resend-emailverify/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resendMessage.innerHTML = '<p style="color: green;">Verification email sent! Please check your inbox.</p>';
+                    document.getElementById('resendForm').reset();
+                } else {
+                    let errorText = data.detail || data.error || 'Failed to resend verification email.';
+                    resendMessage.innerHTML = '<p style="color: red;">' + errorText + '</p>';
+                }
+            } catch (error) {
+                resendMessage.innerHTML = '<p style="color: red;">Network error. Please try again.</p>';
+            } finally {
+                resendBtn.disabled = false;
+                resendBtn.textContent = 'Resend Verification Email';
+            }
+        });
+    </script>
 </body>
 </html>

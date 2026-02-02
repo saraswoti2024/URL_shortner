@@ -6,4 +6,6 @@ urlpatterns = [
     path('login/',login_view,name="login"),
     path('',base_view,name="base"),
     path("favicon.ico", lambda request: HttpResponse(status=204)),
+    path('verify-email/',email_verify,name="email_verification"),
+
 ]
