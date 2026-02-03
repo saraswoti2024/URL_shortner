@@ -120,3 +120,20 @@ class CustomToken(TokenObtainPairView):
         )
 
         return response
+
+class LogoutView(APIView):
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get('refresh_token')
+        if not refresh_token:
+            return Response({"error": "No refresh token found."}, status=400)
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            response = Response({"message": "Logged out successfully."})
+            response.delete_cookie("access_token")
+            response.delete_cookie("refresh_token")
+            return response
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
