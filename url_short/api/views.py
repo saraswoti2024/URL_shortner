@@ -8,15 +8,12 @@ class CreateURL(APIView):
     def post(self,request):
         serializer =  URLSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        obj = serializer.save()
+        obj = serializer.save(user=request.user)
         shorter_url = request.build_absolute_uri('/') + obj.shorten_url
-
+        
         return Response({
             'user': obj.user.id,
             'orginal_url' : obj.original_url,
             'shorten_url': shorter_url,
         })
 
-    def get(self,request,id=None):
-    
-        return Response

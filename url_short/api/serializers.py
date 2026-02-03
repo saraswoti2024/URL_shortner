@@ -10,13 +10,13 @@ class URLSerializer(serializers.ModelSerializer):
         fields = ['original_url']
 
     def create(self,validated_data):
-        request = self.context['request'] 
-        print(request.user.id,'-------------------------------------------------')
+        user = validated_data.pop("user")
+        print(user,'-------------------------------------------------')
  
         original_url = validated_data['original_url']
         short_code = hashlib.md5(original_url.encode()).hexdigest()[:6]
         print(short_code,'--------------------')
-        value , created = URLModel.objects.get_or_create(original_url=original_url,user=request.user,defaults={
+        value , created = URLModel.objects.get_or_create(original_url=original_url,user=user,defaults={
             'shorten_url':short_code ,
         })
         print(value,'------------')

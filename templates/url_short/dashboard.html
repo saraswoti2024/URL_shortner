@@ -393,8 +393,7 @@
 
     <script>
         // Configuration - Update this with your DRF API endpoint
-        const API_BASE_URL = 'http://localhost:8000/url/create_url/'; // Replace with your actual API base URL
-        const USER_ID = 1; // This should come from your authentication system
+        const API_BASE_URL = 'http://127.0.0.1:8000/url/create_url/'; // Replace with your actual API base URL
         
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('shortenForm');
@@ -434,19 +433,16 @@
                 hideMessages();
                 
                 try {
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                    const access_token = localStorage.getItem('access_token')
                     const response = await fetch(`${API_BASE_URL}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken,
-            
-                            'Authorization': 'Bearer '+ access_token
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                         },
+                        credentials: "include", // <-- important! sends cookies automatically
                         body: JSON.stringify({ 
                             original_url: longUrl,
-                            user_id: USER_ID  // In a real app, this would come from auth
+                         
                         })
                     });
                     

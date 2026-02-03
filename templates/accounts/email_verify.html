@@ -24,6 +24,7 @@
         <br>
         <h3>Resend Verification Email</h3>
         <form id="resendForm">
+              {% csrf_token %}
             <div>
                 <label for="email">Email:</label><br>
                 <input type="email" id="email" name="email" required>

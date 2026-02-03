@@ -106,6 +106,7 @@ class CustomToken(TokenObtainPairView):
             httponly=True,
             samesite="Lax",
             max_age=24*60*60,
+            path="/",        
             secure=False,
         )
         response.set_cookie(
@@ -114,6 +115,7 @@ class CustomToken(TokenObtainPairView):
             httponly=True,
             samesite="Lax",
             max_age=7*24*3600,
+            path="/",        
             secure=False,
         )
 
