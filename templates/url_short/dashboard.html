@@ -391,212 +391,151 @@
         </footer>
     </div>
 
-    <script>
-        // Configuration - Update this with your DRF API endpoint
-        const API_BASE_URL = 'http://127.0.0.1:8000/url/create_url/'; // Replace with your actual API base URL
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('shortenForm');
-            const longUrlInput = document.getElementById('longUrl');
-            const shortenBtn = document.getElementById('shortenBtn');
-            const loadingElement = document.getElementById('loading');
-            const resultContainer = document.getElementById('resultContainer');
-            const originalUrlDisplay = document.getElementById('originalUrlDisplay');
-            const shortUrlDisplay = document.getElementById('shortUrlDisplay');
-            const copyBtn = document.getElementById('copyBtn');
-            const errorMessage = document.getElementById('errorMessage');
-            const successMessage = document.getElementById('successMessage');
-            const historyList = document.getElementById('historyList');
-            const clickCount = document.getElementById('clickCount');
-            const createdAt = document.getElementById('createdAt');
-            
-            // Load history from localStorage on page load
-            loadHistory();
-            
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const longUrl = longUrlInput.value.trim();
-                if (!longUrl) return;
-                
-                // Validate URL format
-                try {
-                    new URL(longUrl);
-                } catch (err) {
-                    showError('Please enter a valid URL (include http:// or https://)');
-                    return;
-                }
-                
-                // Disable button and show loading
-                shortenBtn.disabled = true;
-                loadingElement.style.display = 'block';
-                hideMessages();
-                
-                try {
-                    const response = await fetch(`${API_BASE_URL}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                        },
-                        credentials: "include", // <-- important! sends cookies automatically
-                        body: JSON.stringify({ 
-                            original_url: longUrl,
-                         
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to shorten URL');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    // Display the result
-                    displayResult(longUrl, data.shorten_url, data.clicks || 0, new Date().toISOString());
-                    
-                    // Add to history
-                    addToHistory(longUrl, data.shorten_url, data.clicks || 0, new Date().toISOString());
-                    
-                    // Clear input
-                    longUrlInput.value = '';
-                    
-                    // Show success message
-                    showSuccess(`Successfully shortened! Your link: ${data.shorten_url}`);
-                    
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError(error.message || 'An error occurred while shortening the URL');
-                } finally {
-                    // Re-enable button and hide loading
-                    shortenBtn.disabled = false;
-                    loadingElement.style.display = 'none';
-                }
+<script>
+const API_BASE_URL = 'http://127.0.0.1:8000/url/';
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('shortenForm');
+    const longUrlInput = document.getElementById('longUrl');
+    const shortenBtn = document.getElementById('shortenBtn');
+    const loadingElement = document.getElementById('loading');
+    const resultContainer = document.getElementById('resultContainer');
+    const originalUrlDisplay = document.getElementById('originalUrlDisplay');
+    const shortUrlDisplay = document.getElementById('shortUrlDisplay');
+    const clickCount = document.getElementById('clickCount');
+    const historyList = document.getElementById('historyList');
+
+    loadHistory();
+
+    // -------------------------------
+    // Submit form to create short URL
+    // -------------------------------
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const longUrl = longUrlInput.value.trim();
+        if (!longUrl) return;
+
+        shortenBtn.disabled = true;
+        loadingElement.style.display = 'block';
+
+        try {
+            const res = await fetch(`${API_BASE_URL}create_url/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                credentials: 'include',
+                body: JSON.stringify({ original_url: longUrl })
             });
-            
-            copyBtn.addEventListener('click', function() {
-                const shortUrl = shortUrlDisplay.textContent;
-                navigator.clipboard.writeText(shortUrl)
-                    .then(() => {
-                        showSuccess('URL copied to clipboard!');
-                    })
-                    .catch(err => {
-                        showError('Failed to copy URL: ' + err);
-                    });
+
+            const text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } 
+            catch { throw new Error('Server did not return JSON.'); }
+
+            if (!res.ok) throw new Error(data.error || 'Failed to create short URL');
+
+            displayResult(longUrl, data.shorten_url, data.clicks);
+            addToHistory(longUrl, data.shorten_url, data.clicks);
+
+            longUrlInput.value = '';
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            shortenBtn.disabled = false;
+            loadingElement.style.display = 'none';
+        }
+    });
+
+    // -------------------------------
+    // Display the short URL result
+    // -------------------------------
+    function displayResult(originalUrl, shortUrl, clicks) {
+        originalUrlDisplay.textContent = originalUrl;
+        shortUrlDisplay.textContent = shortUrl;
+        clickCount.textContent = clicks || 0;
+        resultContainer.style.display = 'block';
+    }
+
+    // -------------------------------
+    // History management
+    // -------------------------------
+    function addToHistory(original, short, clicks) {
+        let history = JSON.parse(localStorage.getItem('urlHistory') || '[]');
+        history.unshift({ original, short, clicks });
+        if (history.length > 10) history = history.slice(0, 10);
+        localStorage.setItem('urlHistory', JSON.stringify(history));
+        loadHistory();
+    }
+
+    function loadHistory() {
+        const history = JSON.parse(localStorage.getItem('urlHistory') || '[]');
+        historyList.innerHTML = '';
+
+        if (!history.length) {
+            historyList.innerHTML = '<p style="text-align:center;">No history yet.</p>';
+            return;
+        }
+
+        history.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `
+                <div class="history-urls">
+                    <div class="history-original">${item.original}</div>
+                    <div class="history-short"><a href="${item.short}" target="_blank">${item.short}</a></div>
+                </div>
+                <div class="history-actions">
+                    <button class="action-btn copy-btn">Copy</button>
+                    <button class="action-btn delete-btn">Delete</button>
+                </div>
+                <div style="font-size:12px;">Clicks: ${item.clicks || 0}</div>
+            `;
+            historyList.appendChild(div);
+
+            // Copy button
+            div.querySelector('.copy-btn').addEventListener('click', () => {
+                navigator.clipboard.writeText(item.short)
+                    .then(() => alert('Copied to clipboard!'))
+                    .catch(() => alert('Failed to copy!'));
             });
-            
-            function displayResult(originalUrl, shortUrl, clicks, timestamp) {
-                originalUrlDisplay.textContent = originalUrl;
-                shortUrlDisplay.textContent = shortUrl;
-                clickCount.textContent = clicks;
-                createdAt.textContent = formatDate(timestamp);
-                
-                resultContainer.style.display = 'block';
-                
-                // Scroll to results
-                resultContainer.scrollIntoView({ behavior: 'smooth' });
-            }
-            
-            function addToHistory(originalUrl, shortUrl, clicks, timestamp) {
-                // Get existing history from localStorage
-                let history = JSON.parse(localStorage.getItem('urlHistory') || '[]');
-                
-                // Add new entry at the beginning
-                history.unshift({
-                    original: originalUrl,
-                    short: shortUrl,
-                    clicks: clicks,
-                    timestamp: timestamp
-                });
-                
-                // Keep only the last 10 entries
-                if (history.length > 10) {
-                    history = history.slice(0, 10);
-                }
-                
-                // Save back to localStorage
-                localStorage.setItem('urlHistory', JSON.stringify(history));
-                
-                // Refresh history display
-                loadHistory();
-            }
-            
-            function loadHistory() {
-                const history = JSON.parse(localStorage.getItem('urlHistory') || '[]');
-                
-                // Clear existing history
-                historyList.innerHTML = '';
-                
-                if (history.length === 0) {
-                    historyList.innerHTML = '<p style="text-align:center; padding:20px; color:#7f8c8d;">No history yet. Shorten some URLs!</p>';
-                    return;
-                }
-                
-                history.forEach((item, index) => {
-                    const historyItem = document.createElement('div');
-                    historyItem.className = 'history-item';
-                    
-                    const date = formatDate(item.timestamp);
-                    
-                    historyItem.innerHTML = `
-                        <div class="history-urls">
-                            <div class="history-original">${item.original}</div>
-                            <div class="history-short"><a href="${item.short}" target="_blank">${item.short}</a></div>
-                        </div>
-                        <div class="history-actions">
-                            <button class="action-btn" onclick="copyToClipboard('${item.short}')">Copy</button>
-                            <button class="action-btn delete-btn" onclick="deleteFromHistory(${index})">Delete</button>
-                        </div>
-                        <div style="font-size:12px; color:#7f8c8d; width:100%;">
-                            Clicks: ${item.clicks} | Created: ${date}
-                        </div>
-                    `;
-                    
-                    historyList.appendChild(historyItem);
-                });
-            }
-            
-            function showError(message) {
-                errorMessage.textContent = message;
-                errorMessage.style.display = 'block';
-                successMessage.style.display = 'none';
-            }
-            
-            function showSuccess(message) {
-                successMessage.textContent = message;
-                successMessage.style.display = 'block';
-                errorMessage.style.display = 'none';
-            }
-            
-            function hideMessages() {
-                errorMessage.style.display = 'none';
-                successMessage.style.display = 'none';
-            }
-            
-            function formatDate(dateString) {
-                const date = new Date(dateString);
-                return date.toLocaleString();
-            }
+
+            // Delete button
+       div.querySelector('.delete-btn').addEventListener('click', async () => {
+    try {
+        // Remove trailing slash before extracting short key
+        const shortKey = item.short.replace(/\/$/, '').split('/').pop();
+
+        const res = await fetch(`${API_BASE_URL}delete/${shortKey}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+            credentials: 'include',
         });
-        
-        // Make these functions available globally for inline event handlers
-        window.copyToClipboard = function(url) {
-            navigator.clipboard.writeText(url)
-                .then(() => {
-                    alert('URL copied to clipboard!');
-                })
-                .catch(err => {
-                    console.error('Failed to copy: ', err);
-                });
-        };
-        
-        window.deleteFromHistory = function(index) {
-            let history = JSON.parse(localStorage.getItem('urlHistory') || '[]');
-            history.splice(index, 1);
-            localStorage.setItem('urlHistory', JSON.stringify(history));
-            loadHistory();
-        };
-    </script>
+
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); }
+        catch { throw new Error('Server did not return JSON.'); }
+
+        if (!res.ok) throw new Error(data.error || 'Delete failed');
+
+        // Remove from localStorage
+        let history = JSON.parse(localStorage.getItem('urlHistory') || '[]');
+        history = history.filter(h => h.short !== item.short);
+        localStorage.setItem('urlHistory', JSON.stringify(history));
+        loadHistory();
+
+        alert(data.message);
+
+    } catch (err) {
+        alert(err.message);
+    }
+});
+
+        });
+    }
+});
+</script>
 </body>
 </html>
